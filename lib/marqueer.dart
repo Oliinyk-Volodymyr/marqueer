@@ -2,11 +2,11 @@ library marqueer;
 
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/scheduler.dart';
 
 part 'controller.dart';
 part 'scroll_view.dart';
@@ -53,6 +53,7 @@ class Marqueer extends StatefulWidget {
     this.controller,
     this.onStarted,
     this.onStopped,
+    this.onLoopEnded,
     this.padding = EdgeInsets.zero,
     this.hitTestBehavior = HitTestBehavior.translucent,
     this.scrollablePointerIgnoring = false,
@@ -65,8 +66,7 @@ class Marqueer extends StatefulWidget {
           }
 
           return true;
-        })(),
-            'if `autoStartAfter` duration bigger than `zero` then `autoStart` must be `true`'),
+        })(), 'if `autoStartAfter` duration bigger than `zero` then `autoStart` must be `true`'),
         delegate = SliverChildBuilderDelegate(
           (context, index) {
             onChangeItemInViewPort?.call(index);
@@ -109,6 +109,7 @@ class Marqueer extends StatefulWidget {
     this.controller,
     this.onStarted,
     this.onStopped,
+    this.onLoopEnded,
     this.padding = EdgeInsets.zero,
     this.hitTestBehavior = HitTestBehavior.opaque,
     this.scrollablePointerIgnoring = false,
@@ -121,8 +122,7 @@ class Marqueer extends StatefulWidget {
           }
 
           return true;
-        })(),
-            'if `autoStartAfter` duration bigger than `zero` then `autoStart` must be `true`'),
+        })(), 'if `autoStartAfter` duration bigger than `zero` then `autoStart` must be `true`'),
         infinity = itemCount == null,
         delegate = SliverChildBuilderDelegate(
           (context, index) {
@@ -214,6 +214,7 @@ class Marqueer extends StatefulWidget {
   final void Function()? onStopped;
   final void Function()? onInteraction;
   final void Function(int index)? onChangeItemInViewPort;
+  final VoidCallback? onLoopEnded;
 
   @override
   State<Marqueer> createState() => _MarqueerState();
@@ -298,7 +299,11 @@ class _MarqueerState extends State<Marqueer> with WidgetsBindingObserver {
     timerLoop?.cancel();
     timerLoop = Timer(
       duration + gap + widget.edgeDuration,
-      createLoop,
+      () {
+        widget.onLoopEnded?.call();
+
+        createLoop();
+      },
     );
   }
 
@@ -421,8 +426,7 @@ class _MarqueerState extends State<Marqueer> with WidgetsBindingObserver {
     });
 
     if (widget.interactionsChangesAnimationDirection) {
-      if (scrollDirection == userScrollDirection ||
-          userScrollDirection == ScrollDirection.idle) {
+      if (scrollDirection == userScrollDirection || userScrollDirection == ScrollDirection.idle) {
         return;
       }
 
@@ -491,15 +495,11 @@ class _MarqueerState extends State<Marqueer> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final isVertical = widget.direction == MarqueerDirection.btt ||
-        widget.direction == MarqueerDirection.ttb;
+    final isVertical = widget.direction == MarqueerDirection.btt || widget.direction == MarqueerDirection.ttb;
 
-    final isReverse = widget.direction == MarqueerDirection.ltr ||
-        widget.direction == MarqueerDirection.btt;
+    final isReverse = widget.direction == MarqueerDirection.ltr || widget.direction == MarqueerDirection.btt;
 
-    final physics = interaction
-        ? const BouncingScrollPhysics()
-        : const NeverScrollableScrollPhysics();
+    final physics = interaction ? const BouncingScrollPhysics() : const NeverScrollableScrollPhysics();
 
     return Listener(
       behavior: widget.hitTestBehavior,
